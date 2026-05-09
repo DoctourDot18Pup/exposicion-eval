@@ -109,6 +109,14 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     );
   }
 
+  const evaluaciones = await prisma.evaluacion.count({ where: { exposicionId: existing.exposicionId } });
+  if (evaluaciones > 0) {
+    return NextResponse.json(
+      makeApiError(409, "Conflict", `No se puede eliminar: la exposición ya tiene ${evaluaciones} evaluación(es) registrada(s)`, path),
+      { status: 409 }
+    );
+  }
+
   await prisma.rubrica.delete({ where: { id } });
 
   return new NextResponse(null, { status: 204 });

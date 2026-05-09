@@ -130,6 +130,24 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     );
   }
 
+  const [alumnos, equipos, exposiciones] = await Promise.all([
+    prisma.alumno.count({ where: { grupoId: id } }),
+    prisma.equipo.count({ where: { grupoId: id } }),
+    prisma.exposicion.count({ where: { grupoId: id } }),
+  ]);
+
+  if (alumnos > 0 || equipos > 0 || exposiciones > 0) {
+    return NextResponse.json(
+      makeApiError(
+        409,
+        "Conflict",
+        `No se puede eliminar: el grupo tiene ${alumnos} alumno(s), ${equipos} equipo(s) y ${exposiciones} exposición(es) asociada(s)`,
+        path
+      ),
+      { status: 409 }
+    );
+  }
+
   await prisma.grupo.delete({ where: { id } });
 
   return new NextResponse(null, { status: 204 });

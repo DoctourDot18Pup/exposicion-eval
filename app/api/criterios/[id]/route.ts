@@ -132,6 +132,14 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     );
   }
 
+  const detalles = await prisma.detalleEvaluacion.count({ where: { criterioId: id } });
+  if (detalles > 0) {
+    return NextResponse.json(
+      makeApiError(409, "Conflict", `No se puede eliminar: el criterio tiene ${detalles} calificación(es) registrada(s) en evaluaciones`, path),
+      { status: 409 }
+    );
+  }
+
   await prisma.criterio.delete({ where: { id } });
 
   return new NextResponse(null, { status: 204 });

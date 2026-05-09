@@ -118,6 +118,14 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     );
   }
 
+  const exposiciones = await prisma.exposicion.count({ where: { equipoId: id } });
+  if (exposiciones > 0) {
+    return NextResponse.json(
+      makeApiError(409, "Conflict", `No se puede eliminar: el equipo tiene ${exposiciones} exposición(es) registrada(s)`, path),
+      { status: 409 }
+    );
+  }
+
   await prisma.equipo.delete({ where: { id } });
 
   return new NextResponse(null, { status: 204 });

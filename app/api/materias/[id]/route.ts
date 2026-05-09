@@ -112,6 +112,14 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     );
   }
 
+  const grupos = await prisma.grupo.count({ where: { materiaId: id } });
+  if (grupos > 0) {
+    return NextResponse.json(
+      makeApiError(409, "Conflict", `No se puede eliminar: la materia tiene ${grupos} grupo(s) asociado(s)`, path),
+      { status: 409 }
+    );
+  }
+
   await prisma.materia.delete({ where: { id } });
 
   return new NextResponse(null, { status: 204 });
