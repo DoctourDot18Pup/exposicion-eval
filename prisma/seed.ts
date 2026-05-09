@@ -183,6 +183,56 @@ async function main() {
   );
 
   console.log("Exposiciones creadas:", exposiciones.map((e) => e.tema));
+
+  // ── Rúbricas ──────────────────────────────────────────────
+  const rubrica1 = await prisma.rubrica.upsert({
+    where: { id: "seed-rubrica-1" },
+    update: {},
+    create: {
+      id: "seed-rubrica-1",
+      nombre: "Rúbrica de Exposición Oral",
+      descripcion: "Evalúa presentación, dominio del tema y recursos visuales",
+      exposicionId: exposiciones[0].id,
+    },
+  });
+
+  const rubrica2 = await prisma.rubrica.upsert({
+    where: { id: "seed-rubrica-2" },
+    update: {},
+    create: {
+      id: "seed-rubrica-2",
+      nombre: "Rúbrica de Proyecto Final",
+      descripcion: "Evalúa documentación, funcionalidad y defensa",
+      exposicionId: exposiciones[1].id,
+    },
+  });
+
+  console.log("Rúbricas creadas:", [rubrica1, rubrica2].map((r) => r.nombre));
+
+  // ── Criterios ─────────────────────────────────────────────
+  const criteriosR1 = [
+    { id: "seed-criterio-1", nombre: "Presentación",     descripcion: "Claridad y fluidez al exponer", ponderacion: 30, rubricaId: rubrica1.id },
+    { id: "seed-criterio-2", nombre: "Dominio del tema", descripcion: "Profundidad y precisión técnica", ponderacion: 50, rubricaId: rubrica1.id },
+    { id: "seed-criterio-3", nombre: "Material visual",  descripcion: "Calidad de las diapositivas",     ponderacion: 20, rubricaId: rubrica1.id },
+  ];
+
+  const criteriosR2 = [
+    { id: "seed-criterio-4", nombre: "Documentación", descripcion: "Claridad y completitud del reporte",  ponderacion: 40, rubricaId: rubrica2.id },
+    { id: "seed-criterio-5", nombre: "Funcionalidad", descripcion: "El sistema cumple los requisitos",     ponderacion: 40, rubricaId: rubrica2.id },
+    { id: "seed-criterio-6", nombre: "Defensa",       descripcion: "Respuestas durante el interrogatorio", ponderacion: 20, rubricaId: rubrica2.id },
+  ];
+
+  await Promise.all(
+    [...criteriosR1, ...criteriosR2].map((c) =>
+      prisma.criterio.upsert({
+        where: { id: c.id },
+        update: {},
+        create: c,
+      })
+    )
+  );
+
+  console.log("Criterios creados:", criteriosR1.length + criteriosR2.length);
 }
 
 main()
