@@ -141,6 +141,27 @@ export interface Criterio {
   updatedAt: Date;
 }
 
+// ── Evaluacion ────────────────────────────────────────────
+export interface DetalleInput {
+  criterioId: string;
+  calificacion: number;
+}
+
+export interface EvaluacionInput {
+  docenteId: string;
+  exposicionId: string;
+  detalles: DetalleInput[];
+}
+
+export interface Evaluacion {
+  id: string;
+  docenteId: string;
+  exposicionId: string;
+  promedio_ponderado: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 // ── Helper ────────────────────────────────────────────────
 export function makeApiError(
   status: number,
