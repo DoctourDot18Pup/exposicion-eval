@@ -108,6 +108,39 @@ export interface Exposicion {
   updatedAt: Date;
 }
 
+// ── Rubrica ───────────────────────────────────────────────
+export interface RubricaInput {
+  nombre: string;
+  descripcion?: string;
+  exposicionId: string;
+}
+
+export interface Rubrica {
+  id: string;
+  nombre: string;
+  descripcion: string | null;
+  exposicionId: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// ── Criterio ──────────────────────────────────────────────
+export interface CriterioInput {
+  nombre: string;
+  descripcion?: string;
+  ponderacion: number;
+}
+
+export interface Criterio {
+  id: string;
+  nombre: string;
+  descripcion: string | null;
+  ponderacion: number;
+  rubricaId: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 // ── Helper ────────────────────────────────────────────────
 export function makeApiError(
   status: number,
