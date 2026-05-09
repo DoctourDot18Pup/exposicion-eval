@@ -71,20 +71,22 @@ npx prisma db seed
 
 ## Modelo de datos
 
-```
-Usuario (docente) ──────────────────────────────────────────────┐
-        │                                                        │
-        ▼                                                        ▼
-Materia ──── Grupo ──── Equipo ◄──── AlumnoEquipo ◄──── Alumno  │
-                │          │                                     │
-                │          └──── Exposicion ────► Rubrica        │
-                │                    │                │          │
-                │                    │                ▼          │
-                │                    │            Criterio       │
-                │                    │                │          │
-                │                    └──── Evaluacion ◄─────────┘
-                │                              │
-                │                              └──── DetalleEvaluacion
+```mermaid
+erDiagram
+    USUARIOS ||--o{ GRUPOS : "imparte (docente)"
+    USUARIOS ||--o{ EVALUACIONES : "realiza (docente)"
+    MATERIAS ||--o{ GRUPOS : "tiene"
+    GRUPOS ||--o{ ALUMNOS : "contiene"
+    GRUPOS ||--o{ EQUIPOS : "tiene"
+    GRUPOS ||--o{ EXPOSICIONES : "tiene"
+    EQUIPOS ||--o{ ALUMNO_EQUIPO : "agrupa"
+    ALUMNOS ||--o| ALUMNO_EQUIPO : "pertenece a uno"
+    EQUIPOS ||--o{ EXPOSICIONES : "presenta"
+    EXPOSICIONES ||--o| RUBRICAS : "tiene una"
+    RUBRICAS ||--o{ CRITERIOS : "contiene"
+    EXPOSICIONES ||--o{ EVALUACIONES : "recibe"
+    EVALUACIONES ||--o{ DETALLE_EVALUACION : "contiene"
+    CRITERIOS ||--o{ DETALLE_EVALUACION : "califica"
 ```
 
 **Reglas de negocio:**
@@ -96,6 +98,286 @@ Materia ──── Grupo ──── Equipo ◄──── AlumnoEquipo ◄�
 - **RN01**: un docente no puede evaluar la misma exposición dos veces (`409 Conflict`).
 - Una **Evaluacion** requiere calificación (0–10) para **todos** los criterios de la rúbrica.
 - `promedio_ponderado` = Σ (calificacion_i × ponderacion_i / 100).
+
+---
+
+## Diagrama de flujo
+
+Flujo completo desde el inicio de un semestre hasta el registro de una evaluación:
+
+```mermaid
+flowchart TD
+    A([Inicio]) --> B[POST /api/auth/login]
+    B --> C[POST /api/materias]
+    C --> D[POST /api/grupos\nvincula materia + docente]
+    D --> E[POST /api/alumnos\npor cada alumno del grupo]
+    E --> F[POST /api/equipos\npor cada equipo del grupo]
+    F --> G[POST /api/equipos/:id/miembros\nasigna alumnos a equipos]
+    G --> H[POST /api/exposiciones\ntema + fecha + equipo + grupo]
+    H --> I[POST /api/rubricas\nvincula a la exposicion]
+    I --> J[POST /api/rubricas/:id/criterios\npor cada criterio — suma ponderacion <= 100]
+    J --> K{¿Suma = 100?}
+    K -- No --> J
+    K -- Sí --> L[POST /api/evaluaciones\ncalificacion 0-10 por criterio]
+    L --> M{¿RN01 violado?}
+    M -- Sí --> N([409 Conflict])
+    M -- No --> O([201 — promedio_ponderado calculado])
+```
+
+---
+
+## Diseño de la base de datos
+
+### `usuarios`
+| Columna | Tipo | Restricciones |
+|---------|------|--------------|
+| id | TEXT | PK, CUID |
+| username | TEXT | UNIQUE NOT NULL |
+| password_hash | TEXT | NOT NULL |
+| rol | ENUM(docente, alumno) | NOT NULL |
+| createdAt | TIMESTAMP | DEFAULT now() |
+
+### `materias`
+| Columna | Tipo | Restricciones |
+|---------|------|--------------|
+| id | TEXT | PK, CUID |
+| clave_materia | TEXT | UNIQUE NOT NULL |
+| nombre_materia | TEXT | NOT NULL |
+| createdAt | TIMESTAMP | DEFAULT now() |
+| updatedAt | TIMESTAMP | AUTO |
+
+### `grupos`
+| Columna | Tipo | Restricciones |
+|---------|------|--------------|
+| id | TEXT | PK, CUID |
+| nombre_grupo | TEXT | NOT NULL |
+| materiaId | TEXT | FK → materias.id NOT NULL |
+| docenteId | TEXT | FK → usuarios.id NULLABLE |
+| createdAt | TIMESTAMP | DEFAULT now() |
+| updatedAt | TIMESTAMP | AUTO |
+
+### `alumnos`
+| Columna | Tipo | Restricciones |
+|---------|------|--------------|
+| id | TEXT | PK, CUID |
+| nombre | TEXT | NOT NULL |
+| apellido | TEXT | NOT NULL |
+| matricula | TEXT | UNIQUE NOT NULL |
+| grupoId | TEXT | FK → grupos.id NOT NULL |
+| createdAt | TIMESTAMP | DEFAULT now() |
+| updatedAt | TIMESTAMP | AUTO |
+
+### `equipos`
+| Columna | Tipo | Restricciones |
+|---------|------|--------------|
+| id | TEXT | PK, CUID |
+| nombre_equipo | TEXT | NOT NULL |
+| grupoId | TEXT | FK → grupos.id NOT NULL |
+| createdAt | TIMESTAMP | DEFAULT now() |
+| updatedAt | TIMESTAMP | AUTO |
+
+### `alumno_equipo`
+| Columna | Tipo | Restricciones |
+|---------|------|--------------|
+| alumnoId | TEXT | PK, UNIQUE, FK → alumnos.id |
+| equipoId | TEXT | PK, FK → equipos.id |
+
+> La unicidad en `alumnoId` garantiza que cada alumno pertenezca a máximo un equipo.
+
+### `exposiciones`
+| Columna | Tipo | Restricciones |
+|---------|------|--------------|
+| id | TEXT | PK, CUID |
+| tema | TEXT | NOT NULL |
+| fecha | TIMESTAMP | NOT NULL |
+| equipoId | TEXT | FK → equipos.id NOT NULL |
+| grupoId | TEXT | FK → grupos.id NOT NULL |
+| createdAt | TIMESTAMP | DEFAULT now() |
+| updatedAt | TIMESTAMP | AUTO |
+
+### `rubricas`
+| Columna | Tipo | Restricciones |
+|---------|------|--------------|
+| id | TEXT | PK, CUID |
+| nombre | TEXT | NOT NULL |
+| descripcion | TEXT | NULLABLE |
+| exposicionId | TEXT | FK → exposiciones.id UNIQUE NOT NULL |
+| createdAt | TIMESTAMP | DEFAULT now() |
+| updatedAt | TIMESTAMP | AUTO |
+
+### `criterios`
+| Columna | Tipo | Restricciones |
+|---------|------|--------------|
+| id | TEXT | PK, CUID |
+| nombre | TEXT | NOT NULL |
+| descripcion | TEXT | NULLABLE |
+| ponderacion | DECIMAL(5,2) | NOT NULL, validado ≤ 100 acumulado |
+| rubricaId | TEXT | FK → rubricas.id NOT NULL |
+| createdAt | TIMESTAMP | DEFAULT now() |
+| updatedAt | TIMESTAMP | AUTO |
+
+### `evaluaciones`
+| Columna | Tipo | Restricciones |
+|---------|------|--------------|
+| id | TEXT | PK, CUID |
+| docenteId | TEXT | FK → usuarios.id NOT NULL |
+| exposicionId | TEXT | FK → exposiciones.id NOT NULL |
+| promedio_ponderado | DECIMAL(5,2) | NOT NULL, calculado |
+| createdAt | TIMESTAMP | DEFAULT now() |
+| updatedAt | TIMESTAMP | AUTO |
+| — | — | UNIQUE(docenteId, exposicionId) — RN01 |
+
+### `detalle_evaluacion`
+| Columna | Tipo | Restricciones |
+|---------|------|--------------|
+| id | TEXT | PK, CUID |
+| evaluacionId | TEXT | FK → evaluaciones.id NOT NULL |
+| criterioId | TEXT | FK → criterios.id NOT NULL |
+| calificacion | DECIMAL(4,2) | NOT NULL, 0–10 |
+| — | — | UNIQUE(evaluacionId, criterioId) |
+
+---
+
+## Simulación de uso
+
+Escenario: el docente abre el semestre de POO, registra alumnos, forma equipos, define la rúbrica de su primera exposición y registra la evaluación.
+
+### 1 — Autenticación
+```
+POST /api/auth/login
+{ "username": "docente1", "password": "docente123" }
+
+→ 200 { "token": "eyJ...", "expiresIn": 86400, "tokenType": "Bearer" }
+```
+Guarda el token. Todos los siguientes requests usan `Authorization: Bearer <token>`.
+
+---
+
+### 2 — Crear la materia
+```
+POST /api/materias
+{ "clave_materia": "POO-2024", "nombre_materia": "Programación Orientada a Objetos" }
+
+→ 201 { "id": "mat-001", "clave_materia": "POO-2024", ... }
+```
+
+---
+
+### 3 — Crear el grupo y asignar al docente
+```
+POST /api/grupos
+{ "nombre_grupo": "Grupo A", "materiaId": "mat-001", "docenteId": "<id-docente1>" }
+
+→ 201 { "id": "grp-001", "nombre_grupo": "Grupo A", "materia": {...}, "docente": {...} }
+```
+
+---
+
+### 4 — Registrar alumnos
+```
+POST /api/alumnos
+{ "nombre": "Ana", "apellido": "García", "matricula": "21031001", "grupoId": "grp-001" }
+→ 201 { "id": "alm-001", ... }
+
+POST /api/alumnos
+{ "nombre": "Luis", "apellido": "Martínez", "matricula": "21031002", "grupoId": "grp-001" }
+→ 201 { "id": "alm-002", ... }
+```
+
+---
+
+### 5 — Crear equipo y asignar miembros
+```
+POST /api/equipos
+{ "nombre_equipo": "Equipo Alpha", "grupoId": "grp-001" }
+→ 201 { "id": "eqp-001", "miembros": [] }
+
+POST /api/equipos/eqp-001/miembros
+{ "alumnoId": "alm-001" }
+→ 201 { "alumnoId": "alm-001", "equipoId": "eqp-001", ... }
+
+POST /api/equipos/eqp-001/miembros
+{ "alumnoId": "alm-002" }
+→ 409 Conflict — "alm-002 ya pertenece a un equipo"
+  (alm-002 fue asignado a Equipo Beta anteriormente)
+```
+
+---
+
+### 6 — Registrar la exposición
+```
+POST /api/exposiciones
+{
+  "tema": "Introducción a la Herencia en Java",
+  "fecha": "2026-06-10T09:00:00.000Z",
+  "equipoId": "eqp-001",
+  "grupoId": "grp-001"
+}
+→ 201 { "id": "exp-001", "tema": "Introducción a la Herencia en Java", ... }
+```
+
+---
+
+### 7 — Crear rúbrica y criterios (suma = 100%)
+```
+POST /api/rubricas
+{ "nombre": "Rúbrica Oral", "exposicionId": "exp-001" }
+→ 201 { "id": "rub-001", "criterios": [] }
+
+POST /api/rubricas/rub-001/criterios
+{ "nombre": "Presentación", "ponderacion": 30 }
+→ 201 { "id": "crt-001", "ponderacion": "30.00" }
+
+POST /api/rubricas/rub-001/criterios
+{ "nombre": "Dominio del tema", "ponderacion": 50 }
+→ 201 { "id": "crt-002", "ponderacion": "50.00" }
+
+POST /api/rubricas/rub-001/criterios
+{ "nombre": "Material visual", "ponderacion": 30 }
+→ 400 Bad Request — "La ponderación acumulada (80.00 + 30) supera 100"
+
+POST /api/rubricas/rub-001/criterios
+{ "nombre": "Material visual", "ponderacion": 20 }
+→ 201 { "id": "crt-003", "ponderacion": "20.00" }
+  ✓ Suma total: 30 + 50 + 20 = 100
+```
+
+---
+
+### 8 — Registrar evaluación (promedio calculado automáticamente)
+```
+POST /api/evaluaciones
+{
+  "docenteId": "<id-docente1>",
+  "exposicionId": "exp-001",
+  "detalles": [
+    { "criterioId": "crt-001", "calificacion": 9 },
+    { "criterioId": "crt-002", "calificacion": 8 },
+    { "criterioId": "crt-003", "calificacion": 7 }
+  ]
+}
+→ 201 {
+    "promedio_ponderado": "8.10",
+    ...
+    "detalles": [
+      { "calificacion": "9.00", "criterio": { "nombre": "Presentación",     "ponderacion": "30.00" } },
+      { "calificacion": "8.00", "criterio": { "nombre": "Dominio del tema", "ponderacion": "50.00" } },
+      { "calificacion": "7.00", "criterio": { "nombre": "Material visual",  "ponderacion": "20.00" } }
+    ]
+  }
+
+  Cálculo: (9 × 0.30) + (8 × 0.50) + (7 × 0.20) = 2.70 + 4.00 + 1.40 = 8.10
+```
+
+---
+
+### 9 — Intento de doble evaluación (RN01)
+```
+POST /api/evaluaciones
+{ "docenteId": "<id-docente1>", "exposicionId": "exp-001", "detalles": [...] }
+
+→ 409 Conflict — "El docente ya evaluó esta exposición (RN01)"
+```
 
 ---
 
