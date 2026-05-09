@@ -1,11 +1,11 @@
 {
   "info": {
-    "name": "exposicion-eval — Fase 1",
+    "name": "exposicion-eval — Completa (Fases 1-7)",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "base_url", "value": "http://localhost:3000", "type": "string" },
-    { "key": "token",    "value": "",                    "type": "string" }
+    { "key": "base_url", "value": "https://exposicion-eval.vercel.app", "type": "string" },
+    { "key": "token",    "value": "",                                    "type": "string" }
   ],
   "item": [
     {
@@ -31,11 +31,8 @@
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"username\": \"docente1\",\n  \"password\": \"docente123\"\n}"
-            },
-            "url": { "raw": "{{base_url}}/api/auth/login", "host": ["{{base_url}}"], "path": ["api","auth","login"] }
+            "url": { "raw": "{{base_url}}/api/auth/login", "host": ["{{base_url}}"], "path": ["api","auth","login"] },
+            "body": { "mode": "raw", "raw": "{\n  \"username\": \"docente1\",\n  \"password\": \"docente123\"\n}" }
           }
         }
       ]
@@ -44,34 +41,20 @@
       "name": "Materias",
       "item": [
         {
-          "name": "GET /api/materias (lista paginada)",
+          "name": "GET /api/materias",
           "request": {
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
-            "url": {
-              "raw": "{{base_url}}/api/materias?page=0&size=10",
-              "host": ["{{base_url}}"],
-              "path": ["api","materias"],
-              "query": [
-                { "key": "page", "value": "0" },
-                { "key": "size", "value": "10" }
-              ]
-            }
+            "url": { "raw": "{{base_url}}/api/materias?page=0&size=10", "host": ["{{base_url}}"], "path": ["api","materias"], "query": [{"key":"page","value":"0"},{"key":"size","value":"10"}] }
           }
         },
         {
-          "name": "POST /api/materias (crear)",
+          "name": "POST /api/materias",
           "request": {
             "method": "POST",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" },
-              { "key": "Content-Type",  "value": "application/json" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"clave_materia\": \"SYS-2024\",\n  \"nombre_materia\": \"Sistemas Operativos\"\n}"
-            },
-            "url": { "raw": "{{base_url}}/api/materias", "host": ["{{base_url}}"], "path": ["api","materias"] }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" },{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/api/materias", "host": ["{{base_url}}"], "path": ["api","materias"] },
+            "body": { "mode": "raw", "raw": "{\n  \"clave_materia\": \"ALG-2024\",\n  \"nombre_materia\": \"Algoritmos y Estructuras de Datos\"\n}" }
           }
         },
         {
@@ -79,22 +62,16 @@
           "request": {
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
-            "url": { "raw": "{{base_url}}/api/materias/REEMPLAZA_CON_ID", "host": ["{{base_url}}"], "path": ["api","materias","REEMPLAZA_CON_ID"] }
+            "url": { "raw": "{{base_url}}/api/materias/:id", "host": ["{{base_url}}"], "path": ["api","materias",":id"], "variable": [{"key":"id","value":""}] }
           }
         },
         {
-          "name": "PUT /api/materias/:id (actualizar)",
+          "name": "PUT /api/materias/:id",
           "request": {
             "method": "PUT",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" },
-              { "key": "Content-Type",  "value": "application/json" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"clave_materia\": \"SYS-2025\",\n  \"nombre_materia\": \"Sistemas Operativos Avanzados\"\n}"
-            },
-            "url": { "raw": "{{base_url}}/api/materias/REEMPLAZA_CON_ID", "host": ["{{base_url}}"], "path": ["api","materias","REEMPLAZA_CON_ID"] }
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" },{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/api/materias/:id", "host": ["{{base_url}}"], "path": ["api","materias",":id"], "variable": [{"key":"id","value":""}] },
+            "body": { "mode": "raw", "raw": "{\n  \"clave_materia\": \"ALG-2025\",\n  \"nombre_materia\": \"Algoritmos y Estructuras de Datos\"\n}" }
           }
         },
         {
@@ -102,7 +79,336 @@
           "request": {
             "method": "DELETE",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
-            "url": { "raw": "{{base_url}}/api/materias/REEMPLAZA_CON_ID", "host": ["{{base_url}}"], "path": ["api","materias","REEMPLAZA_CON_ID"] }
+            "url": { "raw": "{{base_url}}/api/materias/:id", "host": ["{{base_url}}"], "path": ["api","materias",":id"], "variable": [{"key":"id","value":""}] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Grupos",
+      "item": [
+        {
+          "name": "GET /api/grupos",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/grupos?page=0&size=10", "host": ["{{base_url}}"], "path": ["api","grupos"], "query": [{"key":"page","value":"0"},{"key":"size","value":"10"},{"key":"materiaId","value":"","disabled":true}] }
+          }
+        },
+        {
+          "name": "POST /api/grupos",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" },{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/api/grupos", "host": ["{{base_url}}"], "path": ["api","grupos"] },
+            "body": { "mode": "raw", "raw": "{\n  \"nombre_grupo\": \"Grupo D\",\n  \"materiaId\": \"\",\n  \"docenteId\": \"\"\n}" }
+          }
+        },
+        {
+          "name": "GET /api/grupos/:id",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/grupos/:id", "host": ["{{base_url}}"], "path": ["api","grupos",":id"], "variable": [{"key":"id","value":"seed-grupo-1"}] }
+          }
+        },
+        {
+          "name": "PUT /api/grupos/:id",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" },{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/api/grupos/:id", "host": ["{{base_url}}"], "path": ["api","grupos",":id"], "variable": [{"key":"id","value":"seed-grupo-1"}] },
+            "body": { "mode": "raw", "raw": "{\n  \"nombre_grupo\": \"Grupo A Actualizado\",\n  \"materiaId\": \"\"\n}" }
+          }
+        },
+        {
+          "name": "DELETE /api/grupos/:id",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/grupos/:id", "host": ["{{base_url}}"], "path": ["api","grupos",":id"], "variable": [{"key":"id","value":""}] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Alumnos",
+      "item": [
+        {
+          "name": "GET /api/alumnos",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/alumnos?page=0&size=10", "host": ["{{base_url}}"], "path": ["api","alumnos"], "query": [{"key":"page","value":"0"},{"key":"size","value":"10"},{"key":"grupoId","value":"","disabled":true}] }
+          }
+        },
+        {
+          "name": "POST /api/alumnos",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" },{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/api/alumnos", "host": ["{{base_url}}"], "path": ["api","alumnos"] },
+            "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Pedro\",\n  \"apellido\": \"Sánchez\",\n  \"matricula\": \"21031006\",\n  \"grupoId\": \"seed-grupo-1\"\n}" }
+          }
+        },
+        {
+          "name": "GET /api/alumnos/:id",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/alumnos/:id", "host": ["{{base_url}}"], "path": ["api","alumnos",":id"], "variable": [{"key":"id","value":"seed-alumno-1"}] }
+          }
+        },
+        {
+          "name": "PUT /api/alumnos/:id",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" },{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/api/alumnos/:id", "host": ["{{base_url}}"], "path": ["api","alumnos",":id"], "variable": [{"key":"id","value":"seed-alumno-1"}] },
+            "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Ana\",\n  \"apellido\": \"García López\",\n  \"matricula\": \"21031001\",\n  \"grupoId\": \"seed-grupo-1\"\n}" }
+          }
+        },
+        {
+          "name": "DELETE /api/alumnos/:id",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/alumnos/:id", "host": ["{{base_url}}"], "path": ["api","alumnos",":id"], "variable": [{"key":"id","value":""}] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Equipos",
+      "item": [
+        {
+          "name": "GET /api/equipos",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/equipos?page=0&size=10", "host": ["{{base_url}}"], "path": ["api","equipos"], "query": [{"key":"page","value":"0"},{"key":"size","value":"10"},{"key":"grupoId","value":"","disabled":true}] }
+          }
+        },
+        {
+          "name": "POST /api/equipos",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" },{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/api/equipos", "host": ["{{base_url}}"], "path": ["api","equipos"] },
+            "body": { "mode": "raw", "raw": "{\n  \"nombre_equipo\": \"Equipo Delta\",\n  \"grupoId\": \"seed-grupo-3\"\n}" }
+          }
+        },
+        {
+          "name": "GET /api/equipos/:id",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/equipos/:id", "host": ["{{base_url}}"], "path": ["api","equipos",":id"], "variable": [{"key":"id","value":"seed-equipo-1"}] }
+          }
+        },
+        {
+          "name": "PUT /api/equipos/:id",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" },{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/api/equipos/:id", "host": ["{{base_url}}"], "path": ["api","equipos",":id"], "variable": [{"key":"id","value":"seed-equipo-1"}] },
+            "body": { "mode": "raw", "raw": "{\n  \"nombre_equipo\": \"Equipo Alpha Pro\",\n  \"grupoId\": \"seed-grupo-1\"\n}" }
+          }
+        },
+        {
+          "name": "DELETE /api/equipos/:id",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/equipos/:id", "host": ["{{base_url}}"], "path": ["api","equipos",":id"], "variable": [{"key":"id","value":""}] }
+          }
+        },
+        {
+          "name": "POST /api/equipos/:id/miembros",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" },{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/api/equipos/:id/miembros", "host": ["{{base_url}}"], "path": ["api","equipos",":id","miembros"], "variable": [{"key":"id","value":"seed-equipo-1"}] },
+            "body": { "mode": "raw", "raw": "{\n  \"alumnoId\": \"\"\n}" }
+          }
+        },
+        {
+          "name": "DELETE /api/equipos/:id/miembros/:alumnoId",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/equipos/:id/miembros/:alumnoId", "host": ["{{base_url}}"], "path": ["api","equipos",":id","miembros",":alumnoId"], "variable": [{"key":"id","value":""},{"key":"alumnoId","value":""}] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Exposiciones",
+      "item": [
+        {
+          "name": "GET /api/exposiciones",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/exposiciones?page=0&size=10", "host": ["{{base_url}}"], "path": ["api","exposiciones"], "query": [{"key":"page","value":"0"},{"key":"size","value":"10"},{"key":"grupoId","value":"","disabled":true},{"key":"equipoId","value":"","disabled":true}] }
+          }
+        },
+        {
+          "name": "POST /api/exposiciones",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" },{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/api/exposiciones", "host": ["{{base_url}}"], "path": ["api","exposiciones"] },
+            "body": { "mode": "raw", "raw": "{\n  \"tema\": \"Diseño de APIs REST\",\n  \"fecha\": \"2026-06-20T10:00:00.000Z\",\n  \"equipoId\": \"\",\n  \"grupoId\": \"\"\n}" }
+          }
+        },
+        {
+          "name": "GET /api/exposiciones/:id",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/exposiciones/:id", "host": ["{{base_url}}"], "path": ["api","exposiciones",":id"], "variable": [{"key":"id","value":"seed-expo-1"}] }
+          }
+        },
+        {
+          "name": "PUT /api/exposiciones/:id",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" },{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/api/exposiciones/:id", "host": ["{{base_url}}"], "path": ["api","exposiciones",":id"], "variable": [{"key":"id","value":"seed-expo-1"}] },
+            "body": { "mode": "raw", "raw": "{\n  \"tema\": \"Herencia y Polimorfismo en Java\",\n  \"fecha\": \"2026-06-10T09:00:00.000Z\",\n  \"equipoId\": \"seed-equipo-1\",\n  \"grupoId\": \"seed-grupo-1\"\n}" }
+          }
+        },
+        {
+          "name": "DELETE /api/exposiciones/:id",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/exposiciones/:id", "host": ["{{base_url}}"], "path": ["api","exposiciones",":id"], "variable": [{"key":"id","value":""}] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Rúbricas",
+      "item": [
+        {
+          "name": "GET /api/rubricas",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/rubricas?page=0&size=10", "host": ["{{base_url}}"], "path": ["api","rubricas"], "query": [{"key":"page","value":"0"},{"key":"size","value":"10"},{"key":"exposicionId","value":"","disabled":true}] }
+          }
+        },
+        {
+          "name": "POST /api/rubricas",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" },{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/api/rubricas", "host": ["{{base_url}}"], "path": ["api","rubricas"] },
+            "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Rúbrica General\",\n  \"descripcion\": \"Evalúa aspectos generales de la exposición\",\n  \"exposicionId\": \"\"\n}" }
+          }
+        },
+        {
+          "name": "GET /api/rubricas/:id",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/rubricas/:id", "host": ["{{base_url}}"], "path": ["api","rubricas",":id"], "variable": [{"key":"id","value":"seed-rubrica-1"}] }
+          }
+        },
+        {
+          "name": "PUT /api/rubricas/:id",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" },{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/api/rubricas/:id", "host": ["{{base_url}}"], "path": ["api","rubricas",":id"], "variable": [{"key":"id","value":"seed-rubrica-1"}] },
+            "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Rúbrica de Exposición Oral v2\",\n  \"descripcion\": \"Versión actualizada\"\n}" }
+          }
+        },
+        {
+          "name": "DELETE /api/rubricas/:id",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/rubricas/:id", "host": ["{{base_url}}"], "path": ["api","rubricas",":id"], "variable": [{"key":"id","value":""}] }
+          }
+        },
+        {
+          "name": "POST /api/rubricas/:id/criterios",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" },{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/api/rubricas/:id/criterios", "host": ["{{base_url}}"], "path": ["api","rubricas",":id","criterios"], "variable": [{"key":"id","value":"seed-rubrica-2"}] },
+            "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Trabajo en equipo\",\n  \"descripcion\": \"Coordinación y colaboración del grupo\",\n  \"ponderacion\": 20\n}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Criterios",
+      "item": [
+        {
+          "name": "GET /api/criterios/:id",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/criterios/:id", "host": ["{{base_url}}"], "path": ["api","criterios",":id"], "variable": [{"key":"id","value":"seed-criterio-1"}] }
+          }
+        },
+        {
+          "name": "PUT /api/criterios/:id",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" },{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/api/criterios/:id", "host": ["{{base_url}}"], "path": ["api","criterios",":id"], "variable": [{"key":"id","value":"seed-criterio-1"}] },
+            "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Presentación oral\",\n  \"descripcion\": \"Claridad, fluidez y seguridad al exponer\",\n  \"ponderacion\": 30\n}" }
+          }
+        },
+        {
+          "name": "DELETE /api/criterios/:id",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/criterios/:id", "host": ["{{base_url}}"], "path": ["api","criterios",":id"], "variable": [{"key":"id","value":""}] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Evaluaciones",
+      "item": [
+        {
+          "name": "GET /api/evaluaciones",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/evaluaciones?page=0&size=10", "host": ["{{base_url}}"], "path": ["api","evaluaciones"], "query": [{"key":"page","value":"0"},{"key":"size","value":"10"},{"key":"exposicionId","value":"","disabled":true},{"key":"docenteId","value":"","disabled":true}] }
+          }
+        },
+        {
+          "name": "POST /api/evaluaciones",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" },{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/api/evaluaciones", "host": ["{{base_url}}"], "path": ["api","evaluaciones"] },
+            "body": { "mode": "raw", "raw": "{\n  \"docenteId\": \"\",\n  \"exposicionId\": \"seed-expo-2\",\n  \"detalles\": [\n    { \"criterioId\": \"seed-criterio-4\", \"calificacion\": 9 },\n    { \"criterioId\": \"seed-criterio-5\", \"calificacion\": 8 },\n    { \"criterioId\": \"seed-criterio-6\", \"calificacion\": 10 }\n  ]\n}" }
+          }
+        },
+        {
+          "name": "GET /api/evaluaciones/:id",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/evaluaciones/:id", "host": ["{{base_url}}"], "path": ["api","evaluaciones",":id"], "variable": [{"key":"id","value":"seed-evaluacion-1"}] }
+          }
+        },
+        {
+          "name": "DELETE /api/evaluaciones/:id",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/evaluaciones/:id", "host": ["{{base_url}}"], "path": ["api","evaluaciones",":id"], "variable": [{"key":"id","value":""}] }
           }
         }
       ]
