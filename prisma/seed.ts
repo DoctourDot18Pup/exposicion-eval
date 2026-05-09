@@ -87,6 +87,27 @@ async function main() {
   ]);
 
   console.log("Grupos creados:", grupos.map((g) => g.nombre_grupo));
+
+  // ── Alumnos ───────────────────────────────────────────────
+  const alumnosData = [
+    { id: "seed-alumno-1", nombre: "Ana",    apellido: "García",    matricula: "21031001", grupoId: grupos[0].id },
+    { id: "seed-alumno-2", nombre: "Luis",   apellido: "Martínez",  matricula: "21031002", grupoId: grupos[0].id },
+    { id: "seed-alumno-3", nombre: "María",  apellido: "López",     matricula: "21031003", grupoId: grupos[1].id },
+    { id: "seed-alumno-4", nombre: "Carlos", apellido: "Hernández", matricula: "21031004", grupoId: grupos[1].id },
+    { id: "seed-alumno-5", nombre: "Sofía",  apellido: "Ramírez",   matricula: "21031005", grupoId: grupos[2].id },
+  ];
+
+  const alumnos = await Promise.all(
+    alumnosData.map((a) =>
+      prisma.alumno.upsert({
+        where: { id: a.id },
+        update: {},
+        create: a,
+      })
+    )
+  );
+
+  console.log("Alumnos creados:", alumnos.map((a) => `${a.nombre} ${a.apellido} (${a.matricula})`));
 }
 
 main()
