@@ -108,6 +108,44 @@ async function main() {
   );
 
   console.log("Alumnos creados:", alumnos.map((a) => `${a.nombre} ${a.apellido} (${a.matricula})`));
+
+  // ── Equipos ───────────────────────────────────────────────
+  const equiposData = [
+    { id: "seed-equipo-1", nombre_equipo: "Equipo Alpha", grupoId: grupos[0].id },
+    { id: "seed-equipo-2", nombre_equipo: "Equipo Beta",  grupoId: grupos[0].id },
+    { id: "seed-equipo-3", nombre_equipo: "Equipo Gamma", grupoId: grupos[1].id },
+  ];
+
+  const equipos = await Promise.all(
+    equiposData.map((e) =>
+      prisma.equipo.upsert({
+        where: { id: e.id },
+        update: {},
+        create: e,
+      })
+    )
+  );
+
+  console.log("Equipos creados:", equipos.map((e) => e.nombre_equipo));
+
+  // ── Miembros ──────────────────────────────────────────────
+  const miembrosData = [
+    { alumnoId: alumnos[0].id, equipoId: equipos[0].id }, // Ana → Alpha
+    { alumnoId: alumnos[1].id, equipoId: equipos[1].id }, // Luis → Beta
+    { alumnoId: alumnos[2].id, equipoId: equipos[2].id }, // María → Gamma
+  ];
+
+  await Promise.all(
+    miembrosData.map((m) =>
+      prisma.alumnoEquipo.upsert({
+        where: { alumnoId: m.alumnoId },
+        update: {},
+        create: m,
+      })
+    )
+  );
+
+  console.log("Miembros asignados:", miembrosData.length);
 }
 
 main()
