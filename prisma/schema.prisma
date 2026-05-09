@@ -48,6 +48,7 @@ model Grupo {
 
   alumnos      Alumno[]
   equipos      Equipo[]
+  exposiciones Exposicion[]
 
   @@map("grupos")
 }
@@ -76,8 +77,23 @@ model Equipo {
   updatedAt     DateTime @updatedAt
 
   miembros      AlumnoEquipo[]
+  exposiciones  Exposicion[]
 
   @@map("equipos")
+}
+
+model Exposicion {
+  id        String   @id @default(cuid())
+  tema      String
+  fecha     DateTime
+  equipoId  String
+  grupoId   String
+  equipo    Equipo   @relation(fields: [equipoId], references: [id])
+  grupo     Grupo    @relation(fields: [grupoId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("exposiciones")
 }
 
 model AlumnoEquipo {
