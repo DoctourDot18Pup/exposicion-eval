@@ -19,7 +19,8 @@ model Usuario {
   rol           Rol
   createdAt     DateTime @default(now())
 
-  grupos        Grupo[]  @relation("DocenteGrupos")
+  grupos        Grupo[]      @relation("DocenteGrupos")
+  evaluaciones  Evaluacion[] @relation("EvaluacionesDocente")
 
   @@map("usuarios")
 }
@@ -93,7 +94,8 @@ model Exposicion {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  rubrica   Rubrica?
+  rubrica      Rubrica?
+  evaluaciones Evaluacion[]
 
   @@map("exposiciones")
 }
@@ -113,16 +115,46 @@ model Rubrica {
 }
 
 model Criterio {
-  id          String   @id @default(cuid())
+  id          String              @id @default(cuid())
   nombre      String
   descripcion String?
-  ponderacion Decimal  @db.Decimal(5, 2)
+  ponderacion Decimal             @db.Decimal(5, 2)
   rubricaId   String
-  rubrica     Rubrica  @relation(fields: [rubricaId], references: [id])
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  rubrica     Rubrica             @relation(fields: [rubricaId], references: [id])
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  detalles    DetalleEvaluacion[]
 
   @@map("criterios")
+}
+
+model Evaluacion {
+  id                 String              @id @default(cuid())
+  docenteId          String
+  exposicionId       String
+  promedio_ponderado Decimal             @db.Decimal(5, 2)
+  docente            Usuario             @relation("EvaluacionesDocente", fields: [docenteId], references: [id])
+  exposicion         Exposicion          @relation(fields: [exposicionId], references: [id])
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  detalles           DetalleEvaluacion[]
+
+  @@unique([docenteId, exposicionId])
+  @@map("evaluaciones")
+}
+
+model DetalleEvaluacion {
+  id           String     @id @default(cuid())
+  evaluacionId String
+  criterioId   String
+  calificacion Decimal    @db.Decimal(4, 2)
+  evaluacion   Evaluacion @relation(fields: [evaluacionId], references: [id])
+  criterio     Criterio   @relation(fields: [criterioId], references: [id])
+
+  @@unique([evaluacionId, criterioId])
+  @@map("detalle_evaluacion")
 }
 
 model AlumnoEquipo {
