@@ -1,0 +1,111 @@
+{
+  "info": {
+    "name": "exposicion-eval — Fase 1",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:3000", "type": "string" },
+    { "key": "token",    "value": "",                    "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "POST /api/auth/login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.token) {",
+                  "  pm.collectionVariables.set('token', json.token);",
+                  "  console.log('Token guardado automáticamente');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"docente1\",\n  \"password\": \"docente123\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/auth/login", "host": ["{{base_url}}"], "path": ["api","auth","login"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Materias",
+      "item": [
+        {
+          "name": "GET /api/materias (lista paginada)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/materias?page=0&size=10",
+              "host": ["{{base_url}}"],
+              "path": ["api","materias"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "10" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/materias (crear)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clave_materia\": \"SYS-2024\",\n  \"nombre_materia\": \"Sistemas Operativos\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/materias", "host": ["{{base_url}}"], "path": ["api","materias"] }
+          }
+        },
+        {
+          "name": "GET /api/materias/:id",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/materias/REEMPLAZA_CON_ID", "host": ["{{base_url}}"], "path": ["api","materias","REEMPLAZA_CON_ID"] }
+          }
+        },
+        {
+          "name": "PUT /api/materias/:id (actualizar)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clave_materia\": \"SYS-2025\",\n  \"nombre_materia\": \"Sistemas Operativos Avanzados\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/materias/REEMPLAZA_CON_ID", "host": ["{{base_url}}"], "path": ["api","materias","REEMPLAZA_CON_ID"] }
+          }
+        },
+        {
+          "name": "DELETE /api/materias/:id",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/materias/REEMPLAZA_CON_ID", "host": ["{{base_url}}"], "path": ["api","materias","REEMPLAZA_CON_ID"] }
+          }
+        }
+      ]
+    }
+  ]
+}
