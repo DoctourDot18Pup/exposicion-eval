@@ -233,6 +233,34 @@ async function main() {
   );
 
   console.log("Criterios creados:", criteriosR1.length + criteriosR2.length);
+
+  // ── Evaluacion ────────────────────────────────────────────
+  // Calificaciones: Presentación(30%) = 9, Dominio(50%) = 8, Material(20%) = 7
+  // Promedio = 9*0.30 + 8*0.50 + 7*0.20 = 2.7 + 4.0 + 1.4 = 8.10
+  const criterioSeedIds = [
+    { id: "seed-criterio-1", calificacion: 9 },
+    { id: "seed-criterio-2", calificacion: 8 },
+    { id: "seed-criterio-3", calificacion: 7 },
+  ];
+
+  const evaluacion = await prisma.evaluacion.upsert({
+    where: { docenteId_exposicionId: { docenteId: docente.id, exposicionId: exposiciones[0].id } },
+    update: {},
+    create: {
+      id: "seed-evaluacion-1",
+      docenteId: docente.id,
+      exposicionId: exposiciones[0].id,
+      promedio_ponderado: 8.10,
+      detalles: {
+        create: criterioSeedIds.map((c) => ({
+          criterioId: c.id,
+          calificacion: c.calificacion,
+        })),
+      },
+    },
+  });
+
+  console.log(`Evaluación creada: promedio ponderado = ${evaluacion.promedio_ponderado}`);
 }
 
 main()
