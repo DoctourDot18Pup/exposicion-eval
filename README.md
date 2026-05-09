@@ -1,7 +1,7 @@
 # exposicion-eval — Backend API
 
 Sistema de gestión de exposiciones académicas del TecNM. Permite a docentes gestionar
-materias, grupos, alumnos, equipos, exposiciones y rúbricas ponderadas.
+materias, grupos, alumnos, equipos, exposiciones, rúbricas ponderadas y evaluaciones.
 
 ## Stack
 
@@ -72,18 +72,30 @@ npx prisma db seed
 ## Modelo de datos
 
 ```
-Usuario (docente) ──┐
-                    ▼
-Materia ──────── Grupo ──────── Equipo ◄──── AlumnoEquipo ◄──┐
-                    │                                          │
-                    └──────── Alumno ────────────────────────►┘
+Usuario (docente) ──────────────────────────────────────────────┐
+        │                                                        │
+        ▼                                                        ▼
+Materia ──── Grupo ──── Equipo ◄──── AlumnoEquipo ◄──── Alumno  │
+                │          │                                     │
+                │          └──── Exposicion ────► Rubrica        │
+                │                    │                │          │
+                │                    │                ▼          │
+                │                    │            Criterio       │
+                │                    │                │          │
+                │                    └──── Evaluacion ◄─────────┘
+                │                              │
+                │                              └──── DetalleEvaluacion
 ```
 
-- Un **Grupo** pertenece a una **Materia** y puede tener un **Docente** asignado.
+**Reglas de negocio:**
 - Un **Alumno** pertenece a exactamente un **Grupo**.
-- Un **Equipo** pertenece a un **Grupo**.
-- Un **Alumno** puede estar en máximo un **Equipo** (unicidad en `AlumnoEquipo.alumnoId`).
-- El alumno y el equipo deben pertenecer al mismo **Grupo**.
+- Un **Alumno** puede estar en máximo un **Equipo** (el equipo y el alumno deben ser del mismo grupo).
+- Una **Exposicion** pertenece a un **Equipo** y un **Grupo**; el equipo debe pertenecer a ese grupo.
+- Una **Exposicion** tiene máximo una **Rubrica**.
+- La suma de `ponderacion` de los **Criterios** de una rúbrica no puede superar 100.
+- **RN01**: un docente no puede evaluar la misma exposición dos veces (`409 Conflict`).
+- Una **Evaluacion** requiere calificación (0–10) para **todos** los criterios de la rúbrica.
+- `promedio_ponderado` = Σ (calificacion_i × ponderacion_i / 100).
 
 ---
 
@@ -106,7 +118,7 @@ Todos los errores devuelven el mismo objeto:
 | `400` | Bad Request — validación fallida |
 | `401` | Unauthorized — sin token o token inválido |
 | `404` | Not Found — recurso no existe |
-| `409` | Conflict — duplicado (matrícula, membresía) |
+| `409` | Conflict — duplicado o RN01 |
 
 ---
 
@@ -151,10 +163,7 @@ Authorization: Bearer <token>
 
 **Request:**
 ```json
-{
-  "username": "docente1",
-  "password": "docente123"
-}
+{ "username": "docente1", "password": "docente123" }
 ```
 
 **Response 200:**
@@ -169,8 +178,8 @@ Authorization: Bearer <token>
 **Errores:**
 | Caso | Status |
 |------|--------|
-| Credenciales incorrectas | `401` — "Credenciales inválidas" |
-| Falta `username` o `password` | `400` — "username y password son requeridos" |
+| Credenciales incorrectas | `401` |
+| Falta `username` o `password` | `400` |
 
 ---
 
@@ -179,21 +188,19 @@ Authorization: Bearer <token>
 | Método | Ruta | Descripción |
 |--------|------|-------------|
 | `GET` | `/api/materias` | Lista paginada |
-| `POST` | `/api/materias` | Crear materia |
+| `POST` | `/api/materias` | Crear |
 | `GET` | `/api/materias/:id` | Obtener por ID |
 | `PUT` | `/api/materias/:id` | Actualizar |
 | `DELETE` | `/api/materias/:id` | Eliminar (204) |
 
-#### GET /api/materias
-
-**Response 200:**
+#### GET /api/materias — Response 200
 ```json
 {
   "content": [
     {
       "id": "clx...",
-      "clave_materia": "REDES-2024",
-      "nombre_materia": "Redes de Computadoras",
+      "clave_materia": "POO-2024",
+      "nombre_materia": "Programación Orientada a Objetos",
       "createdAt": "2026-05-09T05:00:00.000Z",
       "updatedAt": "2026-05-09T05:00:00.000Z"
     }
@@ -206,31 +213,14 @@ Authorization: Bearer <token>
 ```
 
 #### POST /api/materias
-
-**Request:**
-```json
-{
-  "clave_materia": "ALG-2024",
-  "nombre_materia": "Algoritmos y Estructuras de Datos"
-}
-```
-
-**Response 201:**
-```json
-{
-  "id": "clx...",
-  "clave_materia": "ALG-2024",
-  "nombre_materia": "Algoritmos y Estructuras de Datos",
-  "createdAt": "2026-05-09T06:00:00.000Z",
-  "updatedAt": "2026-05-09T06:00:00.000Z"
-}
-```
+**Request:** `{ "clave_materia": "ALG-2024", "nombre_materia": "Algoritmos y Estructuras de Datos" }`  
+**Response 201:** objeto materia completo.
 
 **Errores:**
 | Caso | Status |
 |------|--------|
-| `clave_materia` o `nombre_materia` vacíos | `400` |
-| `clave_materia` duplicada | `409` — "Ya existe una materia con clave..." |
+| Campo vacío | `400` |
+| `clave_materia` duplicada | `409` |
 | ID no encontrado | `404` |
 
 ---
@@ -240,16 +230,12 @@ Authorization: Bearer <token>
 | Método | Ruta | Descripción |
 |--------|------|-------------|
 | `GET` | `/api/grupos` | Lista paginada, filtro `?materiaId=` |
-| `POST` | `/api/grupos` | Crear grupo |
+| `POST` | `/api/grupos` | Crear |
 | `GET` | `/api/grupos/:id` | Obtener por ID |
 | `PUT` | `/api/grupos/:id` | Actualizar |
 | `DELETE` | `/api/grupos/:id` | Eliminar (204) |
 
-#### GET /api/grupos
-
-Filtro opcional: `?materiaId=<id>`
-
-**Response 200:**
+#### GET /api/grupos — Response 200
 ```json
 {
   "content": [
@@ -258,17 +244,10 @@ Filtro opcional: `?materiaId=<id>`
       "nombre_grupo": "Grupo A",
       "materiaId": "clx...",
       "docenteId": "clx...",
-      "createdAt": "2026-05-09T05:00:00.000Z",
-      "updatedAt": "2026-05-09T05:00:00.000Z",
-      "materia": {
-        "id": "clx...",
-        "clave_materia": "POO-2024",
-        "nombre_materia": "Programación Orientada a Objetos"
-      },
-      "docente": {
-        "id": "clx...",
-        "username": "docente1"
-      }
+      "createdAt": "...",
+      "updatedAt": "...",
+      "materia": { "id": "clx...", "clave_materia": "POO-2024", "nombre_materia": "Programación Orientada a Objetos" },
+      "docente": { "id": "clx...", "username": "docente1" }
     }
   ],
   "totalElements": 3,
@@ -279,27 +258,15 @@ Filtro opcional: `?materiaId=<id>`
 ```
 
 #### POST /api/grupos
-
-**Request:**
-```json
-{
-  "nombre_grupo": "Grupo D",
-  "materiaId": "<id-de-materia>",
-  "docenteId": "<id-de-docente>"
-}
-```
-
-`docenteId` es opcional. Si se proporciona, el usuario debe tener `rol = "docente"`.
-
-**Response 201:** mismo objeto con `materia` y `docente` anidados.
+**Request:** `{ "nombre_grupo": "Grupo D", "materiaId": "<id>", "docenteId": "<id>" }` (`docenteId` opcional)  
+**Response 201:** grupo con `materia` y `docente` anidados.
 
 **Errores:**
 | Caso | Status |
 |------|--------|
 | `nombre_grupo` fuera de 2–50 caracteres | `400` |
-| `materiaId` no existe | `404` |
-| `docenteId` con rol alumno | `400` — "no tiene rol de docente" |
-| `docenteId` no existe | `404` |
+| `materiaId` o `docenteId` no existe | `404` |
+| `docenteId` con rol alumno | `400` |
 
 ---
 
@@ -308,16 +275,12 @@ Filtro opcional: `?materiaId=<id>`
 | Método | Ruta | Descripción |
 |--------|------|-------------|
 | `GET` | `/api/alumnos` | Lista paginada, filtro `?grupoId=` |
-| `POST` | `/api/alumnos` | Crear alumno |
+| `POST` | `/api/alumnos` | Crear |
 | `GET` | `/api/alumnos/:id` | Obtener por ID |
 | `PUT` | `/api/alumnos/:id` | Actualizar |
 | `DELETE` | `/api/alumnos/:id` | Eliminar (204) |
 
-#### GET /api/alumnos
-
-Filtro opcional: `?grupoId=<id>`
-
-**Response 200:**
+#### GET /api/alumnos — Response 200
 ```json
 {
   "content": [
@@ -327,16 +290,12 @@ Filtro opcional: `?grupoId=<id>`
       "apellido": "García",
       "matricula": "21031001",
       "grupoId": "seed-grupo-1",
-      "createdAt": "2026-05-09T06:00:00.000Z",
-      "updatedAt": "2026-05-09T06:00:00.000Z",
+      "createdAt": "...",
+      "updatedAt": "...",
       "grupo": {
         "id": "seed-grupo-1",
         "nombre_grupo": "Grupo A",
-        "materia": {
-          "id": "clx...",
-          "clave_materia": "POO-2024",
-          "nombre_materia": "Programación Orientada a Objetos"
-        }
+        "materia": { "id": "clx...", "clave_materia": "POO-2024", "nombre_materia": "Programación Orientada a Objetos" }
       }
     }
   ],
@@ -348,26 +307,16 @@ Filtro opcional: `?grupoId=<id>`
 ```
 
 #### POST /api/alumnos
-
-**Request:**
-```json
-{
-  "nombre": "Pedro",
-  "apellido": "Sánchez",
-  "matricula": "21031006",
-  "grupoId": "<id-de-grupo>"
-}
-```
-
-**Response 201:** alumno con `grupo` y su `materia` anidados.
+**Request:** `{ "nombre": "Pedro", "apellido": "Sánchez", "matricula": "21031006", "grupoId": "<id>" }`  
+**Response 201:** alumno con `grupo` y `materia` anidados.
 
 **Errores:**
 | Caso | Status |
 |------|--------|
-| Algún campo requerido faltante | `400` |
+| Campo requerido faltante | `400` |
 | `nombre` o `apellido` fuera de 2–50 caracteres | `400` |
 | `matricula` fuera de 5–20 caracteres alfanuméricos | `400` |
-| `matricula` ya registrada | `409` — "Ya existe un alumno con matrícula..." |
+| `matricula` duplicada | `409` |
 | `grupoId` no existe | `404` |
 
 ---
@@ -377,18 +326,14 @@ Filtro opcional: `?grupoId=<id>`
 | Método | Ruta | Descripción |
 |--------|------|-------------|
 | `GET` | `/api/equipos` | Lista paginada, filtro `?grupoId=` |
-| `POST` | `/api/equipos` | Crear equipo |
+| `POST` | `/api/equipos` | Crear |
 | `GET` | `/api/equipos/:id` | Obtener por ID con miembros |
 | `PUT` | `/api/equipos/:id` | Actualizar |
 | `DELETE` | `/api/equipos/:id` | Eliminar (204) |
-| `POST` | `/api/equipos/:id/miembros` | Agregar alumno al equipo |
-| `DELETE` | `/api/equipos/:id/miembros/:alumnoId` | Quitar alumno del equipo (204) |
+| `POST` | `/api/equipos/:id/miembros` | Agregar alumno |
+| `DELETE` | `/api/equipos/:id/miembros/:alumnoId` | Quitar alumno (204) |
 
-#### GET /api/equipos
-
-Filtro opcional: `?grupoId=<id>`
-
-**Response 200:**
+#### GET /api/equipos — Response 200
 ```json
 {
   "content": [
@@ -396,18 +341,11 @@ Filtro opcional: `?grupoId=<id>`
       "id": "seed-equipo-1",
       "nombre_equipo": "Equipo Alpha",
       "grupoId": "seed-grupo-1",
-      "createdAt": "2026-05-09T06:00:00.000Z",
-      "updatedAt": "2026-05-09T06:00:00.000Z",
+      "createdAt": "...",
+      "updatedAt": "...",
       "grupo": { "id": "seed-grupo-1", "nombre_grupo": "Grupo A" },
       "miembros": [
-        {
-          "alumno": {
-            "id": "seed-alumno-1",
-            "nombre": "Ana",
-            "apellido": "García",
-            "matricula": "21031001"
-          }
-        }
+        { "alumno": { "id": "seed-alumno-1", "nombre": "Ana", "apellido": "García", "matricula": "21031001" } }
       ]
     }
   ],
@@ -418,28 +356,7 @@ Filtro opcional: `?grupoId=<id>`
 }
 ```
 
-#### POST /api/equipos
-
-**Request:**
-```json
-{
-  "nombre_equipo": "Equipo Delta",
-  "grupoId": "<id-de-grupo>"
-}
-```
-
-**Response 201:** equipo con `grupo` y `miembros: []`.
-
-#### POST /api/equipos/:id/miembros
-
-**Request:**
-```json
-{
-  "alumnoId": "<id-de-alumno>"
-}
-```
-
-**Response 201:**
+#### POST /api/equipos/:id/miembros — Response 201
 ```json
 {
   "alumnoId": "clx...",
@@ -453,10 +370,218 @@ Filtro opcional: `?grupoId=<id>`
 | Caso | Status |
 |------|--------|
 | `nombre_equipo` fuera de 2–50 caracteres | `400` |
-| `grupoId` no existe | `404` |
-| `alumnoId` no existe | `404` |
-| Alumno pertenece a otro grupo | `400` — "no pertenece al mismo grupo que el equipo" |
-| Alumno ya tiene equipo asignado | `409` — "ya pertenece a un equipo en este grupo" |
+| `alumnoId` o `grupoId` no existe | `404` |
+| Alumno de otro grupo | `400` — "no pertenece al mismo grupo" |
+| Alumno ya tiene equipo | `409` |
+
+---
+
+### Exposiciones
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| `GET` | `/api/exposiciones` | Lista paginada, filtros `?grupoId=` `?equipoId=` |
+| `POST` | `/api/exposiciones` | Crear |
+| `GET` | `/api/exposiciones/:id` | Obtener por ID |
+| `PUT` | `/api/exposiciones/:id` | Actualizar |
+| `DELETE` | `/api/exposiciones/:id` | Eliminar (204) |
+
+#### GET /api/exposiciones — Response 200
+```json
+{
+  "content": [
+    {
+      "id": "seed-expo-1",
+      "tema": "Introducción a la Herencia en Java",
+      "fecha": "2026-06-10T09:00:00.000Z",
+      "equipoId": "seed-equipo-1",
+      "grupoId": "seed-grupo-1",
+      "createdAt": "...",
+      "updatedAt": "...",
+      "equipo": { "id": "seed-equipo-1", "nombre_equipo": "Equipo Alpha" },
+      "grupo": {
+        "id": "seed-grupo-1",
+        "nombre_grupo": "Grupo A",
+        "materia": { "id": "clx...", "clave_materia": "POO-2024", "nombre_materia": "Programación Orientada a Objetos" }
+      }
+    }
+  ],
+  "totalElements": 3,
+  "totalPages": 1,
+  "page": 0,
+  "size": 10
+}
+```
+
+#### POST /api/exposiciones
+**Request:**
+```json
+{
+  "tema": "Diseño de APIs REST",
+  "fecha": "2026-06-20T10:00:00.000Z",
+  "equipoId": "<id>",
+  "grupoId": "<id>"
+}
+```
+**Response 201:** exposición con `equipo` y `grupo` anidados.
+
+**Errores:**
+| Caso | Status |
+|------|--------|
+| `tema` fuera de 3–100 caracteres | `400` |
+| `fecha` inválida (no ISO 8601) | `400` |
+| `equipoId` o `grupoId` no existe | `404` |
+| Equipo no pertenece al grupo | `400` |
+
+---
+
+### Rúbricas
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| `GET` | `/api/rubricas` | Lista paginada, filtro `?exposicionId=` |
+| `POST` | `/api/rubricas` | Crear (1 por exposición) |
+| `GET` | `/api/rubricas/:id` | Obtener por ID con criterios |
+| `PUT` | `/api/rubricas/:id` | Actualizar nombre/descripción |
+| `DELETE` | `/api/rubricas/:id` | Eliminar (204) |
+| `POST` | `/api/rubricas/:id/criterios` | Agregar criterio |
+
+#### GET /api/rubricas/:id — Response 200
+```json
+{
+  "id": "seed-rubrica-1",
+  "nombre": "Rúbrica de Exposición Oral",
+  "descripcion": "Evalúa presentación, dominio del tema y recursos visuales",
+  "exposicionId": "seed-expo-1",
+  "createdAt": "...",
+  "updatedAt": "...",
+  "exposicion": { "id": "seed-expo-1", "tema": "Introducción a la Herencia en Java", "fecha": "..." },
+  "criterios": [
+    { "id": "seed-criterio-1", "nombre": "Presentación",     "descripcion": "...", "ponderacion": "30.00" },
+    { "id": "seed-criterio-2", "nombre": "Dominio del tema", "descripcion": "...", "ponderacion": "50.00" },
+    { "id": "seed-criterio-3", "nombre": "Material visual",  "descripcion": "...", "ponderacion": "20.00" }
+  ]
+}
+```
+
+#### POST /api/rubricas
+**Request:** `{ "nombre": "Rúbrica General", "descripcion": "...", "exposicionId": "<id>" }`  
+**Response 201:** rúbrica con `criterios: []`.
+
+#### POST /api/rubricas/:id/criterios — Response 201
+```json
+{
+  "id": "clx...",
+  "nombre": "Trabajo en equipo",
+  "descripcion": "Coordinación del grupo",
+  "ponderacion": "25.00",
+  "rubricaId": "clx...",
+  "createdAt": "...",
+  "updatedAt": "..."
+}
+```
+
+**Errores:**
+| Caso | Status |
+|------|--------|
+| `nombre` fuera de 3–100 caracteres | `400` |
+| `exposicionId` no existe | `404` |
+| Exposición ya tiene rúbrica | `409` |
+| `ponderacion` ≤ 0 o > 100 | `400` |
+| Suma de ponderaciones superaría 100 | `400` — "La ponderación acumulada (X + Y) supera 100" |
+
+---
+
+### Criterios
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| `GET` | `/api/criterios/:id` | Obtener por ID |
+| `PUT` | `/api/criterios/:id` | Actualizar (valida suma ≤ 100) |
+| `DELETE` | `/api/criterios/:id` | Eliminar (204) |
+
+#### GET /api/criterios/:id — Response 200
+```json
+{
+  "id": "seed-criterio-1",
+  "nombre": "Presentación",
+  "descripcion": "Claridad y fluidez al exponer",
+  "ponderacion": "30.00",
+  "rubricaId": "seed-rubrica-1",
+  "createdAt": "...",
+  "updatedAt": "...",
+  "rubrica": { "id": "seed-rubrica-1", "nombre": "Rúbrica de Exposición Oral" }
+}
+```
+
+---
+
+### Evaluaciones
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| `GET` | `/api/evaluaciones` | Lista paginada, filtros `?exposicionId=` `?docenteId=` |
+| `POST` | `/api/evaluaciones` | Crear con todos los detalles |
+| `GET` | `/api/evaluaciones/:id` | Obtener por ID con detalles |
+| `DELETE` | `/api/evaluaciones/:id` | Eliminar (204) |
+
+#### POST /api/evaluaciones
+**Request:**
+```json
+{
+  "docenteId": "<id-docente>",
+  "exposicionId": "<id-exposicion>",
+  "detalles": [
+    { "criterioId": "<id-criterio-1>", "calificacion": 9 },
+    { "criterioId": "<id-criterio-2>", "calificacion": 8 },
+    { "criterioId": "<id-criterio-3>", "calificacion": 7 }
+  ]
+}
+```
+
+**Response 201:**
+```json
+{
+  "id": "clx...",
+  "docenteId": "clx...",
+  "exposicionId": "clx...",
+  "promedio_ponderado": "8.10",
+  "createdAt": "...",
+  "updatedAt": "...",
+  "docente": { "id": "clx...", "username": "docente1" },
+  "exposicion": { "id": "clx...", "tema": "Introducción a la Herencia en Java", "fecha": "..." },
+  "detalles": [
+    {
+      "id": "clx...",
+      "calificacion": "9.00",
+      "criterio": { "id": "clx...", "nombre": "Presentación", "ponderacion": "30.00" }
+    },
+    {
+      "id": "clx...",
+      "calificacion": "8.00",
+      "criterio": { "id": "clx...", "nombre": "Dominio del tema", "ponderacion": "50.00" }
+    },
+    {
+      "id": "clx...",
+      "calificacion": "7.00",
+      "criterio": { "id": "clx...", "nombre": "Material visual", "ponderacion": "20.00" }
+    }
+  ]
+}
+```
+
+> **Cálculo del seed:** 9×0.30 + 8×0.50 + 7×0.20 = 2.70 + 4.00 + 1.40 = **8.10**
+
+**Errores:**
+| Caso | Status |
+|------|--------|
+| `docenteId` con rol alumno | `400` |
+| `exposicionId` sin rúbrica asignada | `400` |
+| Falta calificación para algún criterio | `400` — "Falta calificación para el criterio con id..." |
+| Criterio ajeno a la rúbrica | `400` — "no pertenece a la rúbrica" |
+| `calificacion` fuera de 0–10 | `400` |
+| Docente ya evaluó esta exposición (RN01) | `409` — "El docente ya evaluó esta exposición (RN01)" |
+| `docenteId` o `exposicionId` no existe | `404` |
 
 ---
 
@@ -492,11 +617,33 @@ Filtro opcional: `?grupoId=<id>`
 | 21031005 | Sofía | Ramírez | Grupo C |
 
 ### Equipos y miembros
-| id | nombre_equipo | grupo | miembros |
-|----|--------------|-------|---------|
+| id | nombre_equipo | grupo | miembro del seed |
+|----|--------------|-------|-----------------|
 | seed-equipo-1 | Equipo Alpha | Grupo A | Ana García |
 | seed-equipo-2 | Equipo Beta | Grupo A | Luis Martínez |
 | seed-equipo-3 | Equipo Gamma | Grupo B | María López |
+
+### Exposiciones
+| id | tema | fecha | equipo | grupo |
+|----|------|-------|--------|-------|
+| seed-expo-1 | Introducción a la Herencia en Java | 2026-06-10 | Equipo Alpha | Grupo A |
+| seed-expo-2 | Polimorfismo y Clases Abstractas | 2026-06-17 | Equipo Beta | Grupo A |
+| seed-expo-3 | Normalización de Bases de Datos | 2026-06-12 | Equipo Gamma | Grupo B |
+
+### Rúbricas y criterios
+| rúbrica | exposición | criterio | ponderación |
+|---------|-----------|---------|------------|
+| Rúbrica de Exposición Oral | seed-expo-1 | Presentación | 30% |
+| | | Dominio del tema | 50% |
+| | | Material visual | 20% |
+| Rúbrica de Proyecto Final | seed-expo-2 | Documentación | 40% |
+| | | Funcionalidad | 40% |
+| | | Defensa | 20% |
+
+### Evaluación
+| evaluación | docente | exposición | promedio ponderado |
+|-----------|---------|-----------|-------------------|
+| seed-evaluacion-1 | docente1 | seed-expo-1 | 8.10 |
 
 ---
 
