@@ -25,6 +25,7 @@ export interface LoginResponse {
   tokenType: string;
 }
 
+// ── Materia ──────────────────────────────────────────────
 export interface MateriaInput {
   clave_materia: string;
   nombre_materia: string;
@@ -37,6 +38,23 @@ export interface Materia {
   createdAt: Date;
 }
 
+// ── Grupo ─────────────────────────────────────────────────
+export interface GrupoInput {
+  nombre_grupo: string;
+  materiaId: string;
+  docenteId?: string;
+}
+
+export interface Grupo {
+  id: string;
+  nombre_grupo: string;
+  materiaId: string;
+  docenteId: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// ── Helper ────────────────────────────────────────────────
 export function makeApiError(
   status: number,
   error: string,
