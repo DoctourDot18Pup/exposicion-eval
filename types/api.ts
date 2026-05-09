@@ -90,6 +90,24 @@ export interface MiembroInput {
   alumnoId: string;
 }
 
+// ── Exposicion ────────────────────────────────────────────
+export interface ExposicionInput {
+  tema: string;
+  fecha: string;
+  equipoId: string;
+  grupoId: string;
+}
+
+export interface Exposicion {
+  id: string;
+  tema: string;
+  fecha: Date;
+  equipoId: string;
+  grupoId: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 // ── Helper ────────────────────────────────────────────────
 export function makeApiError(
   status: number,
