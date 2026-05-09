@@ -72,6 +72,24 @@ export interface Alumno {
   updatedAt: Date;
 }
 
+// ── Equipo ────────────────────────────────────────────────
+export interface EquipoInput {
+  nombre_equipo: string;
+  grupoId: string;
+}
+
+export interface Equipo {
+  id: string;
+  nombre_equipo: string;
+  grupoId: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface MiembroInput {
+  alumnoId: string;
+}
+
 // ── Helper ────────────────────────────────────────────────
 export function makeApiError(
   status: number,
