@@ -1,6 +1,7 @@
 {
   "info": {
     "name": "exposicion-eval — Completa (Fases 1-7)",
+    "description": "# exposicion-eval — Backend API\n\nSistema de gestión de exposiciones académicas del **TecNM**. Permite a docentes administrar materias, grupos, alumnos, equipos, exposiciones, rúbricas ponderadas y evaluaciones con cálculo automático de promedio.\n\n---\n\n## URL base\n\n| Entorno | URL |\n|---------|-----|\n| Producción | `https://exposicion-eval.vercel.app` |\n| Local | `http://localhost:3000` |\n\nCambia la variable `base_url` en la pestaña **Variables** de esta colección.\n\n---\n\n## Autenticación\n\nTodos los endpoints excepto `POST /api/auth/login` requieren un JWT en el header:\n\n```\nAuthorization: Bearer {{token}}\n```\n\nEl script de **POST /api/auth/login** guarda el token automáticamente en la variable `{{token}}`. Ejecuta ese request primero y el resto funcionará sin configuración adicional.\n\n**Credenciales del seed:**\n| Username | Password | Rol |\n|----------|----------|-----|\n| `docente1` | `docente123` | docente |\n| `alumno1` | `alumno123` | alumno |\n\n---\n\n## Paginación\n\nLos endpoints de lista aceptan:\n- `?page=0` — página (inicia en 0)\n- `?size=10` — elementos por página (máx 100)\n\nRespuesta paginada:\n```json\n{\n  \"content\": [...],\n  \"totalElements\": 3,\n  \"totalPages\": 1,\n  \"page\": 0,\n  \"size\": 10\n}\n```\n\n---\n\n## Formato de error\n\nTodos los errores siguen el mismo formato:\n```json\n{\n  \"timestamp\": \"2026-05-09T06:00:00.000Z\",\n  \"status\": 409,\n  \"error\": \"Conflict\",\n  \"message\": \"Descripción del error\",\n  \"path\": \"/api/recurso/id\"\n}\n```\n\n| Código | Significado |\n|--------|-------------|\n| 400 | Validación fallida |\n| 401 | Sin token o token inválido |\n| 404 | Recurso no encontrado |\n| 409 | Duplicado, FK constraint o RN01 |\n\n---\n\n## Modelo de datos (resumen)\n\n```\nMateria → Grupo → Alumno → AlumnoEquipo ← Equipo\n                   └──────────────────────────┘\n          Grupo → Equipo → Exposicion → Rubrica → Criterio\n                               └──────→ Evaluacion → DetalleEvaluacion\n```\n\n**Reglas de negocio clave:**\n- Un alumno pertenece a máximo un equipo dentro de su grupo.\n- El equipo y el alumno deben ser del mismo grupo.\n- Cada exposición tiene máximo una rúbrica.\n- La suma de ponderaciones de criterios no puede superar 100.\n- **RN01:** Un docente no puede evaluar la misma exposición dos veces (→ 409).\n- Al crear una evaluación se calculan automáticamente el promedio ponderado.\n\n---\n\n## Datos del seed (IDs fijos)\n\n| Entidad | ID | Descripción |\n|---------|-----|-------------|\n| Grupo | `seed-grupo-1` | Grupo A — POO-2024 |\n| Grupo | `seed-grupo-2` | Grupo B — BD-2024 |\n| Grupo | `seed-grupo-3` | Grupo C — REDES-2024 |\n| Alumno | `seed-alumno-1` | Ana García (21031001) — Grupo A |\n| Alumno | `seed-alumno-2` | Luis Martínez (21031002) — Grupo A |\n| Alumno | `seed-alumno-3` | María López (21031003) — Grupo B |\n| Equipo | `seed-equipo-1` | Equipo Alpha — Grupo A |\n| Equipo | `seed-equipo-2` | Equipo Beta — Grupo A |\n| Equipo | `seed-equipo-3` | Equipo Gamma — Grupo B |\n| Exposición | `seed-expo-1` | Herencia en Java — Equipo Alpha |\n| Exposición | `seed-expo-2` | Polimorfismo — Equipo Beta |\n| Exposición | `seed-expo-3` | Normalización BD — Equipo Gamma |\n| Rúbrica | `seed-rubrica-1` | Rúbrica Oral (expo-1) |\n| Rúbrica | `seed-rubrica-2` | Rúbrica Proyecto Final (expo-2) |\n| Criterio | `seed-criterio-1` | Presentación 30% (rubrica-1) |\n| Criterio | `seed-criterio-2` | Dominio del tema 50% (rubrica-1) |\n| Criterio | `seed-criterio-3` | Material visual 20% (rubrica-1) |\n| Criterio | `seed-criterio-4` | Documentación 40% (rubrica-2) |\n| Criterio | `seed-criterio-5` | Funcionalidad 40% (rubrica-2) |\n| Criterio | `seed-criterio-6` | Defensa 20% (rubrica-2) |\n| Evaluación | `seed-evaluacion-1` | docente1 → expo-1 → promedio 8.10 |\n\n---\n\n## Flujo de prueba sugerido\n\n1. **Auth** → login (guarda token automáticamente)\n2. **Materias** → GET lista, POST nueva, GET por id, PUT, DELETE\n3. **Grupos** → GET con filtro `?materiaId=`, POST, GET por id\n4. **Alumnos** → GET con filtro `?grupoId=seed-grupo-1`\n5. **Equipos** → GET seed-equipo-1 (miembros anidados), POST miembro\n6. **Exposiciones** → GET lista, GET seed-expo-1\n7. **Rúbricas** → GET seed-rubrica-1 (criterios anidados)\n8. **Evaluaciones** → GET seed-evaluacion-1 (promedio 8.10), POST nueva en expo-2\n9. **Evaluaciones** → POST misma evaluación → 409 RN01",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -10,9 +11,11 @@
   "item": [
     {
       "name": "Auth",
+      "description": "Autenticación mediante JWT (HS256). El único endpoint que no requiere token.\n\nEl script del request guarda el token automáticamente en la variable `{{token}}` de la colección al recibir una respuesta 200 con el campo `token`. Todos los demás requests lo usan a través de `Authorization: Bearer {{token}}`.",
       "item": [
         {
           "name": "POST /api/auth/login",
+          "description": "Autentica un usuario y devuelve un JWT válido por 24 horas.\n\n**Body requerido:**\n- `username` (string)\n- `password` (string)\n\n**Respuesta 200:**\n```json\n{\n  \"token\": \"eyJhbGciOiJIUzI1NiJ9...\",\n  \"expiresIn\": 86400,\n  \"tokenType\": \"Bearer\"\n}\n```\n\n**Errores:**\n- `400` — Falta username o password\n- `401` — Credenciales incorrectas",
           "event": [
             {
               "listen": "test",
@@ -39,9 +42,11 @@
     },
     {
       "name": "Materias",
+      "description": "CRUD completo de materias. Cada materia tiene una clave única (`clave_materia`) y un nombre.\n\n**Filtros disponibles en GET lista:**\n- `?page=` y `?size=` para paginación\n\n**Restricción en DELETE:**\nNo se puede eliminar una materia que tenga grupos asociados → `409 Conflict`.",
       "item": [
         {
           "name": "GET /api/materias",
+          "description": "Devuelve la lista paginada de materias.\n\n**Query params:** `page` (def. 0), `size` (def. 10, máx 100)\n\n**Respuesta 200:** objeto paginado con array `content` de materias.",
           "request": {
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
@@ -50,6 +55,7 @@
         },
         {
           "name": "POST /api/materias",
+          "description": "Crea una nueva materia.\n\n**Body requerido:**\n- `clave_materia` (string, único)\n- `nombre_materia` (string)\n\n**Respuesta 201:** objeto materia creado.\n\n**Errores:**\n- `400` — Campo vacío\n- `409` — `clave_materia` duplicada",
           "request": {
             "method": "POST",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" },{ "key": "Content-Type", "value": "application/json" }],
@@ -59,6 +65,7 @@
         },
         {
           "name": "GET /api/materias/:id",
+          "description": "Obtiene una materia por su ID.\n\n**Respuesta 200:** objeto materia.\n**Error 404:** materia no encontrada.",
           "request": {
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
@@ -67,6 +74,7 @@
         },
         {
           "name": "PUT /api/materias/:id",
+          "description": "Actualiza una materia existente.\n\n**Body requerido:** `clave_materia`, `nombre_materia`\n\n**Errores:**\n- `404` — Materia no encontrada\n- `409` — `clave_materia` ya usada por otra materia",
           "request": {
             "method": "PUT",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" },{ "key": "Content-Type", "value": "application/json" }],
@@ -76,6 +84,7 @@
         },
         {
           "name": "DELETE /api/materias/:id",
+          "description": "Elimina una materia.\n\n**Respuesta 204:** sin cuerpo.\n\n**Errores:**\n- `404` — Materia no encontrada\n- `409` — Tiene grupos asociados (elimina los grupos primero)",
           "request": {
             "method": "DELETE",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
@@ -86,9 +95,11 @@
     },
     {
       "name": "Grupos",
+      "description": "CRUD de grupos académicos. Un grupo pertenece a una materia y puede tener un docente asignado.\n\n**Filtros disponibles:** `?materiaId=` para listar solo los grupos de una materia.\n\n**Restricción en DELETE:** No se puede eliminar si tiene alumnos, equipos o exposiciones asociados.",
       "item": [
         {
           "name": "GET /api/grupos",
+          "description": "Lista paginada de grupos. Incluye `materia` y `docente` anidados.\n\n**Query params opcionales:** `?materiaId=` para filtrar por materia.",
           "request": {
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
@@ -97,6 +108,7 @@
         },
         {
           "name": "POST /api/grupos",
+          "description": "Crea un grupo vinculado a una materia.\n\n**Body requerido:** `nombre_grupo` (2-50 chars), `materiaId`\n**Body opcional:** `docenteId` — debe ser un usuario con `rol = docente`\n\n**Errores:**\n- `400` — `nombre_grupo` fuera de rango o `docenteId` con rol alumno\n- `404` — `materiaId` o `docenteId` no existe",
           "request": {
             "method": "POST",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" },{ "key": "Content-Type", "value": "application/json" }],
@@ -106,6 +118,7 @@
         },
         {
           "name": "GET /api/grupos/:id",
+          "description": "Obtiene un grupo por ID con `materia` y `docente` anidados.",
           "request": {
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
@@ -114,6 +127,7 @@
         },
         {
           "name": "PUT /api/grupos/:id",
+          "description": "Actualiza nombre, materia o docente de un grupo.\n\n**Body requerido:** `nombre_grupo`, `materiaId`\n**Body opcional:** `docenteId`",
           "request": {
             "method": "PUT",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" },{ "key": "Content-Type", "value": "application/json" }],
@@ -123,6 +137,7 @@
         },
         {
           "name": "DELETE /api/grupos/:id",
+          "description": "Elimina un grupo.\n\n**Respuesta 204:** sin cuerpo.\n\n**Error 409:** el grupo tiene alumnos, equipos o exposiciones. Elimina los registros dependientes primero.",
           "request": {
             "method": "DELETE",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
@@ -133,9 +148,11 @@
     },
     {
       "name": "Alumnos",
+      "description": "CRUD de alumnos. Cada alumno pertenece a un grupo y tiene una matrícula única de 5-20 caracteres alfanuméricos.\n\n**Filtros disponibles:** `?grupoId=` para listar solo los alumnos de un grupo.\n\n**Cascade al eliminar:** si el alumno tiene equipo asignado, la membresía se elimina automáticamente.",
       "item": [
         {
           "name": "GET /api/alumnos",
+          "description": "Lista paginada de alumnos con `grupo` y `materia` anidados.\n\n**Query param opcional:** `?grupoId=` para filtrar.",
           "request": {
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
@@ -144,6 +161,7 @@
         },
         {
           "name": "POST /api/alumnos",
+          "description": "Registra un alumno en un grupo.\n\n**Body requerido:** `nombre` (2-50), `apellido` (2-50), `matricula` (5-20 alfanumérico), `grupoId`\n\n**Errores:**\n- `400` — Formato de matrícula inválido o longitud fuera de rango\n- `404` — `grupoId` no existe\n- `409` — Matrícula duplicada",
           "request": {
             "method": "POST",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" },{ "key": "Content-Type", "value": "application/json" }],
@@ -153,6 +171,7 @@
         },
         {
           "name": "GET /api/alumnos/:id",
+          "description": "Obtiene un alumno por ID con su grupo y materia anidados.",
           "request": {
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
@@ -161,6 +180,7 @@
         },
         {
           "name": "PUT /api/alumnos/:id",
+          "description": "Actualiza los datos de un alumno. Si cambia la matrícula, valida que no esté en uso por otro alumno.",
           "request": {
             "method": "PUT",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" },{ "key": "Content-Type", "value": "application/json" }],
@@ -170,6 +190,7 @@
         },
         {
           "name": "DELETE /api/alumnos/:id",
+          "description": "Elimina un alumno. Su membresía en equipo se elimina automáticamente en cascada.\n\n**Respuesta 204:** sin cuerpo.",
           "request": {
             "method": "DELETE",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
@@ -180,9 +201,11 @@
     },
     {
       "name": "Equipos",
+      "description": "CRUD de equipos y gestión de miembros. Un equipo pertenece a un grupo.\n\n**Reglas de membresía:**\n- El alumno debe pertenecer al mismo grupo que el equipo.\n- Un alumno solo puede estar en un equipo (→ 409 si ya tiene uno).\n\n**Filtros disponibles:** `?grupoId=`\n\n**Cascade al eliminar equipo:** las membresías se eliminan automáticamente. Bloqueado si el equipo tiene exposiciones.",
       "item": [
         {
           "name": "GET /api/equipos",
+          "description": "Lista paginada de equipos con miembros anidados.\n\n**Query param opcional:** `?grupoId=`",
           "request": {
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
@@ -191,6 +214,7 @@
         },
         {
           "name": "POST /api/equipos",
+          "description": "Crea un equipo dentro de un grupo.\n\n**Body requerido:** `nombre_equipo` (2-50 chars), `grupoId`\n\n**Respuesta 201:** equipo con `grupo` y `miembros: []`.",
           "request": {
             "method": "POST",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" },{ "key": "Content-Type", "value": "application/json" }],
@@ -200,6 +224,7 @@
         },
         {
           "name": "GET /api/equipos/:id",
+          "description": "Obtiene un equipo por ID con su grupo y lista de miembros (alumno anidado en cada membresía).",
           "request": {
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
@@ -208,6 +233,7 @@
         },
         {
           "name": "PUT /api/equipos/:id",
+          "description": "Actualiza el nombre o grupo de un equipo.\n\n**Body requerido:** `nombre_equipo`, `grupoId`",
           "request": {
             "method": "PUT",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" },{ "key": "Content-Type", "value": "application/json" }],
@@ -217,6 +243,7 @@
         },
         {
           "name": "DELETE /api/equipos/:id",
+          "description": "Elimina un equipo y sus membresías en cascada.\n\n**Respuesta 204:** sin cuerpo.\n**Error 409:** el equipo tiene exposiciones registradas.",
           "request": {
             "method": "DELETE",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
@@ -225,6 +252,7 @@
         },
         {
           "name": "POST /api/equipos/:id/miembros",
+          "description": "Agrega un alumno al equipo.\n\n**Body requerido:** `alumnoId`\n\n**Respuesta 201:** registro de membresía con alumno y equipo anidados.\n\n**Errores:**\n- `400` — El alumno es de otro grupo\n- `404` — Alumno o equipo no encontrado\n- `409` — El alumno ya pertenece a un equipo",
           "request": {
             "method": "POST",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" },{ "key": "Content-Type", "value": "application/json" }],
@@ -234,6 +262,7 @@
         },
         {
           "name": "DELETE /api/equipos/:id/miembros/:alumnoId",
+          "description": "Quita un alumno del equipo.\n\n**Respuesta 204:** sin cuerpo.\n**Error 404:** el alumno no es miembro del equipo.",
           "request": {
             "method": "DELETE",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
@@ -244,9 +273,11 @@
     },
     {
       "name": "Exposiciones",
+      "description": "CRUD de exposiciones. Cada exposición está vinculada a un equipo y un grupo (el equipo debe pertenecer al grupo).\n\n**Filtros disponibles:** `?grupoId=`, `?equipoId=`\n\n**Cascade al eliminar:** se eliminan automáticamente su rúbrica, criterios, evaluaciones y detalles.",
       "item": [
         {
           "name": "GET /api/exposiciones",
+          "description": "Lista paginada de exposiciones ordenadas por fecha ascendente.\n\n**Query params opcionales:** `?grupoId=`, `?equipoId=`\n\nIncluye `equipo` y `grupo` (con `materia`) anidados.",
           "request": {
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
@@ -255,6 +286,7 @@
         },
         {
           "name": "POST /api/exposiciones",
+          "description": "Registra una nueva exposición.\n\n**Body requerido:**\n- `tema` (3-100 chars)\n- `fecha` (ISO 8601, ej. `2026-06-20T10:00:00.000Z`)\n- `equipoId`\n- `grupoId`\n\n**Errores:**\n- `400` — `tema` fuera de rango, fecha inválida o equipo no pertenece al grupo\n- `404` — equipo o grupo no encontrado",
           "request": {
             "method": "POST",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" },{ "key": "Content-Type", "value": "application/json" }],
@@ -264,6 +296,7 @@
         },
         {
           "name": "GET /api/exposiciones/:id",
+          "description": "Obtiene una exposición por ID con `equipo` y `grupo` anidados.",
           "request": {
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
@@ -272,6 +305,7 @@
         },
         {
           "name": "PUT /api/exposiciones/:id",
+          "description": "Actualiza tema, fecha, equipo o grupo de una exposición. Valida que el equipo pertenezca al grupo.",
           "request": {
             "method": "PUT",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" },{ "key": "Content-Type", "value": "application/json" }],
@@ -281,6 +315,7 @@
         },
         {
           "name": "DELETE /api/exposiciones/:id",
+          "description": "Elimina una exposición y en cascada: su rúbrica, criterios, evaluaciones y detalles.\n\n**Respuesta 204:** sin cuerpo.",
           "request": {
             "method": "DELETE",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
@@ -291,9 +326,11 @@
     },
     {
       "name": "Rúbricas",
+      "description": "Cada exposición tiene máximo una rúbrica. La rúbrica contiene criterios con ponderaciones cuya suma no puede superar 100.\n\n**Cascade al eliminar rúbrica:** sus criterios se eliminan automáticamente.\n**Bloqueado si:** la exposición ya tiene evaluaciones registradas (→ 409).",
       "item": [
         {
           "name": "GET /api/rubricas",
+          "description": "Lista paginada de rúbricas con sus criterios anidados.\n\n**Query param opcional:** `?exposicionId=`",
           "request": {
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
@@ -302,6 +339,7 @@
         },
         {
           "name": "POST /api/rubricas",
+          "description": "Crea una rúbrica y la vincula a una exposición. Solo puede existir una rúbrica por exposición.\n\n**Body requerido:** `nombre` (3-100 chars), `exposicionId`\n**Body opcional:** `descripcion`\n\n**Errores:**\n- `404` — `exposicionId` no encontrada\n- `409` — La exposición ya tiene rúbrica",
           "request": {
             "method": "POST",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" },{ "key": "Content-Type", "value": "application/json" }],
@@ -311,6 +349,7 @@
         },
         {
           "name": "GET /api/rubricas/:id",
+          "description": "Obtiene una rúbrica por ID con su `exposicion` y lista de `criterios` (ordenados por creación).",
           "request": {
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
@@ -319,6 +358,7 @@
         },
         {
           "name": "PUT /api/rubricas/:id",
+          "description": "Actualiza el nombre o descripción de una rúbrica. No permite cambiar la exposición.",
           "request": {
             "method": "PUT",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" },{ "key": "Content-Type", "value": "application/json" }],
@@ -328,6 +368,7 @@
         },
         {
           "name": "DELETE /api/rubricas/:id",
+          "description": "Elimina una rúbrica y sus criterios en cascada.\n\n**Respuesta 204:** sin cuerpo.\n**Error 409:** la exposición ya tiene evaluaciones registradas.",
           "request": {
             "method": "DELETE",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
@@ -336,6 +377,7 @@
         },
         {
           "name": "POST /api/rubricas/:id/criterios",
+          "description": "Agrega un criterio a la rúbrica.\n\n**Body requerido:** `nombre` (3-100 chars), `ponderacion` (0.01–100)\n**Body opcional:** `descripcion`\n\n**Validación clave:** la suma de ponderaciones de todos los criterios de la rúbrica no puede superar 100.\n\n**Error 400:** `\"La ponderación acumulada (X + Y) supera 100\"`",
           "request": {
             "method": "POST",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" },{ "key": "Content-Type", "value": "application/json" }],
@@ -347,9 +389,11 @@
     },
     {
       "name": "Criterios",
+      "description": "Gestión individual de criterios de evaluación. Los criterios se crean a través de `POST /api/rubricas/:id/criterios` y se actualizan/eliminan aquí.\n\n**Validación en PUT:** la nueva ponderación no puede hacer que la suma total supere 100.\n**Bloqueado en DELETE:** si el criterio tiene calificaciones en evaluaciones (→ 409).",
       "item": [
         {
           "name": "GET /api/criterios/:id",
+          "description": "Obtiene un criterio por ID con su rúbrica anidada.",
           "request": {
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
@@ -358,6 +402,7 @@
         },
         {
           "name": "PUT /api/criterios/:id",
+          "description": "Actualiza nombre, descripción o ponderación de un criterio.\n\n**Validación:** (suma de otros criterios) + nueva ponderación ≤ 100.\n\n**Errores:**\n- `400` — Ponderación inválida o suma supera 100\n- `404` — Criterio no encontrado",
           "request": {
             "method": "PUT",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" },{ "key": "Content-Type", "value": "application/json" }],
@@ -367,6 +412,7 @@
         },
         {
           "name": "DELETE /api/criterios/:id",
+          "description": "Elimina un criterio.\n\n**Respuesta 204:** sin cuerpo.\n**Error 409:** el criterio tiene calificaciones registradas en evaluaciones.",
           "request": {
             "method": "DELETE",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
@@ -377,9 +423,11 @@
     },
     {
       "name": "Evaluaciones",
+      "description": "Registro de evaluaciones. Una evaluación es la calificación que un docente asigna a una exposición, cubriendo **todos** los criterios de su rúbrica.\n\n**Cálculo automático:** `promedio_ponderado = Σ (calificacion_i × ponderacion_i / 100)`\n\n**RN01:** Un docente no puede evaluar la misma exposición dos veces (→ 409 Conflict).\n\n**Cascade al eliminar:** los detalles (calificaciones por criterio) se eliminan automáticamente.",
       "item": [
         {
           "name": "GET /api/evaluaciones",
+          "description": "Lista paginada de evaluaciones con `docente`, `exposicion` y `detalles` (criterio + calificación) anidados.\n\n**Query params opcionales:** `?exposicionId=`, `?docenteId=`",
           "request": {
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
@@ -388,6 +436,7 @@
         },
         {
           "name": "POST /api/evaluaciones",
+          "description": "Registra una evaluación completa con todas las calificaciones en un solo request.\n\n**Body requerido:**\n- `docenteId` — debe tener `rol = docente`\n- `exposicionId` — debe tener rúbrica asignada\n- `detalles` — array con un objeto `{criterioId, calificacion}` por **cada** criterio de la rúbrica\n\n**Validaciones:**\n- `calificacion` entre 0 y 10\n- Todos los criterios de la rúbrica deben estar cubiertos\n- No se permiten criterios ajenos a la rúbrica\n\n**Errores:**\n- `400` — Falta criterio, calificación fuera de rango, exposición sin rúbrica, docenteId con rol alumno\n- `404` — docenteId o exposicionId no encontrado\n- `409` — RN01: el docente ya evaluó esta exposición\n\n**Ejemplo de cálculo (seed-expo-2):**\nDocumentación(40%) × 9 + Funcionalidad(40%) × 8 + Defensa(20%) × 10 = 3.6 + 3.2 + 2.0 = **8.80**",
           "request": {
             "method": "POST",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" },{ "key": "Content-Type", "value": "application/json" }],
@@ -397,6 +446,7 @@
         },
         {
           "name": "GET /api/evaluaciones/:id",
+          "description": "Obtiene una evaluación por ID con todos sus detalles (criterio + calificación + ponderación) y el `promedio_ponderado`.\n\nEl seed tiene `seed-evaluacion-1` con promedio **8.10** sobre `seed-expo-1`.",
           "request": {
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
@@ -405,6 +455,7 @@
         },
         {
           "name": "DELETE /api/evaluaciones/:id",
+          "description": "Elimina una evaluación y sus detalles en cascada.\n\n**Respuesta 204:** sin cuerpo.\n**Error 404:** evaluación no encontrada.",
           "request": {
             "method": "DELETE",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
