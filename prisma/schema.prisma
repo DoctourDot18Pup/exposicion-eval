@@ -93,7 +93,36 @@ model Exposicion {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  rubrica   Rubrica?
+
   @@map("exposiciones")
+}
+
+model Rubrica {
+  id           String     @id @default(cuid())
+  nombre       String
+  descripcion  String?
+  exposicionId String     @unique
+  exposicion   Exposicion @relation(fields: [exposicionId], references: [id])
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  criterios    Criterio[]
+
+  @@map("rubricas")
+}
+
+model Criterio {
+  id          String   @id @default(cuid())
+  nombre      String
+  descripcion String?
+  ponderacion Decimal  @db.Decimal(5, 2)
+  rubricaId   String
+  rubrica     Rubrica  @relation(fields: [rubricaId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("criterios")
 }
 
 model AlumnoEquipo {
