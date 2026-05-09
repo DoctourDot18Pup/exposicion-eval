@@ -19,6 +19,8 @@ model Usuario {
   rol           Rol
   createdAt     DateTime @default(now())
 
+  grupos        Grupo[]  @relation("DocenteGrupos")
+
   @@map("usuarios")
 }
 
@@ -29,5 +31,20 @@ model Materia {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
+  grupos         Grupo[]
+
   @@map("materias")
+}
+
+model Grupo {
+  id           String   @id @default(cuid())
+  nombre_grupo String
+  materiaId    String
+  docenteId    String?
+  materia      Materia  @relation(fields: [materiaId], references: [id])
+  docente      Usuario? @relation("DocenteGrupos", fields: [docenteId], references: [id])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("grupos")
 }
