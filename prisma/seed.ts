@@ -146,6 +146,43 @@ async function main() {
   );
 
   console.log("Miembros asignados:", miembrosData.length);
+
+  // ── Exposiciones ──────────────────────────────────────────
+  const exposicionesData = [
+    {
+      id: "seed-expo-1",
+      tema: "Introducción a la Herencia en Java",
+      fecha: new Date("2026-06-10T09:00:00.000Z"),
+      equipoId: equipos[0].id,
+      grupoId: grupos[0].id,
+    },
+    {
+      id: "seed-expo-2",
+      tema: "Polimorfismo y Clases Abstractas",
+      fecha: new Date("2026-06-17T09:00:00.000Z"),
+      equipoId: equipos[1].id,
+      grupoId: grupos[0].id,
+    },
+    {
+      id: "seed-expo-3",
+      tema: "Normalización de Bases de Datos",
+      fecha: new Date("2026-06-12T10:00:00.000Z"),
+      equipoId: equipos[2].id,
+      grupoId: grupos[1].id,
+    },
+  ];
+
+  const exposiciones = await Promise.all(
+    exposicionesData.map((e) =>
+      prisma.exposicion.upsert({
+        where: { id: e.id },
+        update: {},
+        create: e,
+      })
+    )
+  );
+
+  console.log("Exposiciones creadas:", exposiciones.map((e) => e.tema));
 }
 
 main()
