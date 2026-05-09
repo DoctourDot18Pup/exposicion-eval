@@ -105,7 +105,7 @@ model Rubrica {
   nombre       String
   descripcion  String?
   exposicionId String     @unique
-  exposicion   Exposicion @relation(fields: [exposicionId], references: [id])
+  exposicion   Exposicion @relation(fields: [exposicionId], references: [id], onDelete: Cascade)
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 
@@ -120,7 +120,7 @@ model Criterio {
   descripcion String?
   ponderacion Decimal             @db.Decimal(5, 2)
   rubricaId   String
-  rubrica     Rubrica             @relation(fields: [rubricaId], references: [id])
+  rubrica     Rubrica             @relation(fields: [rubricaId], references: [id], onDelete: Cascade)
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
 
@@ -135,7 +135,7 @@ model Evaluacion {
   exposicionId       String
   promedio_ponderado Decimal             @db.Decimal(5, 2)
   docente            Usuario             @relation("EvaluacionesDocente", fields: [docenteId], references: [id])
-  exposicion         Exposicion          @relation(fields: [exposicionId], references: [id])
+  exposicion         Exposicion          @relation(fields: [exposicionId], references: [id], onDelete: Cascade)
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
 
@@ -150,7 +150,7 @@ model DetalleEvaluacion {
   evaluacionId String
   criterioId   String
   calificacion Decimal    @db.Decimal(4, 2)
-  evaluacion   Evaluacion @relation(fields: [evaluacionId], references: [id])
+  evaluacion   Evaluacion @relation(fields: [evaluacionId], references: [id], onDelete: Cascade)
   criterio     Criterio   @relation(fields: [criterioId], references: [id])
 
   @@unique([evaluacionId, criterioId])
@@ -160,8 +160,8 @@ model DetalleEvaluacion {
 model AlumnoEquipo {
   alumnoId String
   equipoId String
-  alumno   Alumno @relation(fields: [alumnoId], references: [id])
-  equipo   Equipo @relation(fields: [equipoId], references: [id])
+  alumno   Alumno @relation(fields: [alumnoId], references: [id], onDelete: Cascade)
+  equipo   Equipo @relation(fields: [equipoId], references: [id], onDelete: Cascade)
 
   @@id([alumnoId, equipoId])
   @@unique([alumnoId])
